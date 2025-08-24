@@ -9,7 +9,6 @@ declare module "axios" {
 
 // --- Base URL resolver (tanpa env lokal) ---
 const DEFAULT_BACKEND_IP = "103.186.1.205";
-const DEFAULT_BACKEND_PORT = 4000;
 
 function resolveBaseURL(): string {
   // 1) kalau ada VITE_API_URL (build prod), pakai itu
