@@ -16,15 +16,9 @@ function resolveBaseURL(): string {
   const envUrl = (import.meta as any)?.env?.VITE_API_URL;
   if (envUrl) return envUrl;
 
-  // 2) lokal dev → backend di localhost:4000
-  const host = typeof window !== "undefined" ? window.location.hostname : "";
-  if (host === "localhost" || host === "127.0.0.1") {
-    return "http://localhost:4000";
-  }
-
-  // 3) VPS via IP (tanpa domain) → **HTTP + port backend**
+  // 2) VPS via IP (tanpa domain) → **HTTP + port backend**
   // pakai HTTPS ke IP biasanya error sertifikat.
-  return `http://${DEFAULT_BACKEND_IP}:${DEFAULT_BACKEND_PORT}`;
+  return `https://103.186.1.205`;
 }
 
 export const api = axios.create({
