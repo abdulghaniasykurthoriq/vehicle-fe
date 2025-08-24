@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    image: my-react:latest
+    container_name: my-react
+    ports:
+      - "80:80"    # publish langsung ke publik (HTTP)
+    restart: unless-stopped
