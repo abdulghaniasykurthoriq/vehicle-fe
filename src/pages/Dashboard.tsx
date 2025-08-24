@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar";
 import { useVehicles } from "../hooks/useVehicles";
 import Pagination from "../components/Pagination";
@@ -13,20 +13,24 @@ type Vehicle = {
   year: number;
 };
 
-type VehiclesResponse = {
-  items: Vehicle[];
-  total: number;
-};
-
 export default function Dashboard() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data, isLoading, error } = useVehicles(page, pageSize) as { data: VehiclesResponse | Vehicle[] | undefined, isLoading: boolean, error: any };
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const items = Array.isArray(data) ? data : data?.items ?? [];
-  const total = Array.isArray(data) ? undefined : data?.total ;
+  // ✅ v5 style: hook menerima object param
+  const { data, isLoading, error } = useVehicles({ page, pageSize });
+  // ✅ fleksibel: dukung { items, total } atau { data, total }
+  const { items, total } = useMemo(() => {
+    const raw: any = data ?? {};
+    const items: Vehicle[] = raw.items ?? raw.data ?? [];
+    const total: number | undefined =
+      raw.total ??
+      raw.pagination?.total ??
+      (Array.isArray(items) ? items.length : 0);
+    return { items, total };
+  }, [data]);
 
   useEffect(() => {
     const t = new Date().toISOString().slice(0, 10);
@@ -62,7 +66,9 @@ export default function Dashboard() {
           <button
             className="btn"
             onClick={() =>
-              downloadReport({ from, to }).catch((err) => alert(err.message))
+              downloadReport({ from, to }).catch((err) =>
+                alert(err.message ?? String(err))
+              )
             }
           >
             Download .xlsx
@@ -87,7 +93,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((v: any) => (
+                  {items.map((v: Vehicle) => (
                     <tr key={v.id} className="border-t">
                       <td className="p-2">{v.plateNumber}</td>
                       <td className="p-2">{v.brand}</td>
@@ -95,7 +101,7 @@ export default function Dashboard() {
                       <td className="p-2">{v.year}</td>
                       <td className="p-2">
                         <Link className="btn" to={`/vehicles/${v.id}`}>
-                          Detail & Status
+                          Detail &amp; Status
                         </Link>
                       </td>
                     </tr>
@@ -110,6 +116,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+
             <Pagination
               page={page}
               pageSize={pageSize}
