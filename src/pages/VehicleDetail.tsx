@@ -4,10 +4,18 @@ import Navbar from "../components/Navbar";
 import { useVehicle, useVehicleStatus } from "../hooks/useVehicles";
 
 export default function VehicleDetail() {
-  const { id = "" } = useParams();
+  const { id = "" } = useParams<{ id: string }>();
   const [date, setDate] = useState("");
+
+  // detail kendaraan
   const { data: v, isLoading: lv, error: ev } = useVehicle(id);
-  const { data: s, isLoading: ls } = useVehicleStatus(id, date);
+
+  // status kendaraan per tanggal (v5: param object)
+  const {
+    data: s,
+    isLoading: ls,
+    error: es,
+  } = useVehicleStatus({ vehicleId: id, date });
 
   useEffect(() => {
     setDate(new Date().toISOString().slice(0, 10));
@@ -24,6 +32,7 @@ export default function VehicleDetail() {
         ) : (
           <>
             <h1 className="text-xl font-semibold">Vehicle Detail</h1>
+
             <div className="space-y-1 bg-white p-4 rounded-xl border">
               <p>
                 <b>Plate:</b> {v.plateNumber}
@@ -46,14 +55,18 @@ export default function VehicleDetail() {
             </div>
 
             <div className="p-3 border rounded-xl bg-white">
-              {ls ? (
+              {date === "" ? (
+                <p>Pilih tanggal…</p>
+              ) : ls ? (
                 <p>Loading status…</p>
+              ) : es ? (
+                <p className="text-red-600">Gagal memuat status</p>
               ) : s ? (
                 <p>
                   Status on {s.date}: <b className="uppercase">{s.status}</b>
                 </p>
               ) : (
-                <p>Pilih tanggal…</p>
+                <p>Tidak ada data status untuk tanggal ini.</p>
               )}
             </div>
           </>

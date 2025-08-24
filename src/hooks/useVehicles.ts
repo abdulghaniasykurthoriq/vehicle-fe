@@ -1,27 +1,60 @@
 // src/hooks/useVehicles.ts
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import type { Vehicle, Paginated } from "../types";
+import { api } from "../lib/api"; // <-- sesuaikan path kalau beda
 
-type Params = { page: number; pageSize: number; search?: string };
+// ---- List Vehicles ----
+type ListParams = { page: number; pageSize: number; search?: string };
 
-export function useVehicles({ page, pageSize, search = "" }: Params) {
+export function useVehicles({ page, pageSize, search = "" }: ListParams) {
   return useQuery({
     queryKey: ["vehicles", { page, pageSize, search }],
     queryFn: async (): Promise<Paginated<Vehicle>> => {
-      const base = import.meta.env.VITE_API_URL ?? "";
-      const url = new URL("/vehicles", base);
-      url.searchParams.set("page", String(page));
-      url.searchParams.set("pageSize", String(pageSize));
-      if (search) url.searchParams.set("search", search);
-
-      const res = await fetch(url.toString(), { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch vehicles");
-      return res.json();
+      const { data } = await api.get<Paginated<Vehicle>>("/vehicles", {
+        params: {
+          page,
+          pageSize,
+          // kirim search hanya jika tidak kosong
+          ...(search ? { search } : {}),
+        },
+      });
+      return data;
     },
-    // v5: ini pengganti keepPreviousData: true
+    // pengganti keepPreviousData: true di v4
     placeholderData: keepPreviousData,
-    // opsional recommended di v5
     refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  });
+}
+
+// ---- Vehicle Detail ----
+export function useVehicle(id: string) {
+  return useQuery({
+    queryKey: ["vehicle", id],
+    queryFn: async (): Promise<Vehicle> => {
+      const { data } = await api.get<Vehicle>(`/vehicles/${id}`);
+      return data;
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
+// ---- Vehicle Status per Date ----
+export type VehicleStatus = { date: string; status: string; [k: string]: any };
+type StatusParams = { vehicleId: string; date: string };
+
+export function useVehicleStatus({ vehicleId, date }: StatusParams) {
+  return useQuery({
+    queryKey: ["vehicle-status", { vehicleId, date }],
+    queryFn: async (): Promise<VehicleStatus> => {
+      const { data } = await api.get<VehicleStatus>(
+        `/vehicles/${vehicleId}/status`,
+        { params: { date } }
+      );
+      return data;
+    },
+    enabled: !!vehicleId && !!date,
     staleTime: 30_000,
   });
 }
