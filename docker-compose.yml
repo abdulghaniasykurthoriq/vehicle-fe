@@ -4,5 +4,9 @@ services:
     image: vehicle-fe:latest
     container_name: vehicle-fe
     ports:
-      - "80:80"        # kalau port 80 sudah dipakai, ganti ke "8081:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
     restart: unless-stopped
