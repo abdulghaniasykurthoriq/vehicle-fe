@@ -7,13 +7,33 @@ declare module "axios" {
   }
 }
 
+// --- Base URL resolver (tanpa env lokal) ---
+const DEFAULT_BACKEND_IP = "103.186.1.205";
+const DEFAULT_BACKEND_PORT = 4000;
+
+function resolveBaseURL(): string {
+  // 1) kalau ada VITE_API_URL (build prod), pakai itu
+  const envUrl = (import.meta as any)?.env?.VITE_API_URL;
+  if (envUrl) return envUrl;
+
+  // 2) lokal dev → backend di localhost:4000
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:4000";
+  }
+
+  // 3) VPS via IP (tanpa domain) → **HTTP + port backend**
+  // pakai HTTPS ke IP biasanya error sertifikat.
+  return `http://${DEFAULT_BACKEND_IP}:${DEFAULT_BACKEND_PORT}`;
+}
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "https://103.186.1.205",
-  withCredentials: true,
+  baseURL: resolveBaseURL(),
+  withCredentials: true, // kalau pakai cookie
+  timeout: 15000,
 });
 
 let accessTokenGetter: () => string | null = () => null;
-
 let refreshHandler: () => Promise<boolean> = async () => false;
 
 export function bindAccessTokenGetter(fn: () => string | null) {
@@ -27,33 +47,25 @@ api.interceptors.request.use((config) => {
   const token = accessTokenGetter();
   if (token) {
     config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${token}`;
+    (config.headers as any).Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
 let refreshingPromise: Promise<boolean> | null = null;
-
 const AUTH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout"];
 
 api.interceptors.response.use(
   (res) => res,
   async (err: AxiosError) => {
     const cfg = err.config as AxiosRequestConfig | undefined;
-
-    if (!cfg || err.response?.status !== 401) {
-      throw err;
-    }
+    if (!cfg || err.response?.status !== 401) throw err;
 
     const url =
       (cfg.baseURL ? new URL(cfg.url!, cfg.baseURL).pathname : cfg.url) || "";
-    if (AUTH_PATHS.some((p) => url.startsWith(p))) {
-      throw err;
-    }
+    if (AUTH_PATHS.some((p) => url.startsWith(p))) throw err;
 
-    if (cfg._retry) {
-      throw err;
-    }
+    if (cfg._retry) throw err;
     cfg._retry = true;
 
     if (!refreshingPromise) {
@@ -61,18 +73,13 @@ api.interceptors.response.use(
         refreshingPromise = null;
       });
     }
-
     const ok = await refreshingPromise;
-    if (!ok) {
-      throw err;
-    }
+    if (!ok) throw err;
 
     const newToken = accessTokenGetter();
     if (newToken) {
       cfg.headers = cfg.headers ?? {};
-      cfg.headers.Authorization = `Bearer ${newToken}`;
-      console.log(newToken);
-    } else {
+      (cfg.headers as any).Authorization = `Bearer ${newToken}`;
     }
     return api(cfg);
   }
