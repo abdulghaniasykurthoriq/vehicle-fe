@@ -1,34 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api";
-import type { Vehicle, VehicleListResponse, VehicleStatus } from "../types";
+// src/hooks/useVehicles.ts
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import type { Vehicle, Paginated } from "../types";
 
-export function useVehicles(page = 1, pageSize = 10) {
+type Params = { page: number; pageSize: number; search?: string };
+
+export function useVehicles({ page, pageSize, search = "" }: Params) {
   return useQuery({
-    queryKey: ["vehicles", page, pageSize],
-    queryFn: async (): Promise<VehicleListResponse | Vehicle[]> => {
-      const { data } = await api.get("/vehicles", {
-        params: { page, pageSize },
-      });
-      return data;
+    queryKey: ["vehicles", { page, pageSize, search }],
+    queryFn: async (): Promise<Paginated<Vehicle>> => {
+      const base = import.meta.env.VITE_API_URL ?? "";
+      const url = new URL("/vehicles", base);
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("pageSize", String(pageSize));
+      if (search) url.searchParams.set("search", search);
+
+      const res = await fetch(url.toString(), { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch vehicles");
+      return res.json();
     },
-    keepPreviousData: true,
-  });
-}
-
-export function useVehicle(id: string) {
-  return useQuery({
-    queryKey: ["vehicle", id],
-    queryFn: async (): Promise<Vehicle> =>
-      (await api.get(`/vehicles/${id}`)).data,
-    enabled: !!id,
-  });
-}
-
-export function useVehicleStatus(id: string, date: string) {
-  return useQuery({
-    queryKey: ["vehicle-status", id, date],
-    queryFn: async (): Promise<VehicleStatus> =>
-      (await api.get(`/vehicles/${id}/status`, { params: { date } })).data,
-    enabled: !!id && !!date,
+    // v5: ini pengganti keepPreviousData: true
+    placeholderData: keepPreviousData,
+    // opsional recommended di v5
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
   });
 }
