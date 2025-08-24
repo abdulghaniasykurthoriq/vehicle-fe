@@ -8,7 +8,7 @@ declare module "axios" {
 }
 
 // --- Base URL resolver (tanpa env lokal) ---
-const DEFAULT_BACKEND_IP = "103.186.1.205";
+const DEFAULT_BACKEND_IP = "103.186.1.205.nip.io";
 
 function resolveBaseURL(): string {
   // 1) kalau ada VITE_API_URL (build prod), pakai itu
@@ -17,7 +17,7 @@ function resolveBaseURL(): string {
 
   // 2) VPS via IP (tanpa domain) → **HTTP + port backend**
   // pakai HTTPS ke IP biasanya error sertifikat.
-  return `https://103.186.1.205`;
+  return `https://103.186.1.205.nip.io`;
 }
 
 export const api = axios.create({
