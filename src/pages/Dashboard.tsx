@@ -1,42 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Navbar from "../components/Navbar";
+import { useVehicles } from "../hooks/useVehicles";
+import Pagination from "../components/Pagination";
+import { downloadReport } from "../services/report";
 import { Link } from "react-router-dom";
 
-function Dashboard() {
-  const [isLoading, setfirst] = useState(false);
-  const [error, setfirsst] = useState(null);
-  const items = [
-    {
-      id: "1",
-      plateNumber: "B 1234 CD",
-      brand: "Toyota",
-      model: "Avanza",
-      year: 2020,
-    },
-    {
-      id: "2",
-      plateNumber: "D 5678 EF",
-      brand: "Honda",
-      model: "Civic",
-      year: 2019,
-    },
-    {
-      id: "3",
-      plateNumber: "E 9101 GH",
-      brand: "Mitsubishi",
-      model: "Xpander",
-      year: 2021,
-    },
-    {
-      id: "4",
-      plateNumber: "F 1112 IJ",
-      brand: "Suzuki",
-      model: "Ertiga",
-      year: 2018,
-    },
-  ];
+type Vehicle = {
+  id: string;
+  plateNumber: string;
+  brand: string;
+  model: string;
+  year: number;
+};
+
+type VehiclesResponse = {
+  items: Vehicle[];
+  total: number;
+};
+
+export default function Dashboard() {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { data, isLoading, error } = useVehicles(page, pageSize) as { data: VehiclesResponse | Vehicle[] | undefined, isLoading: boolean, error: any };
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  const items = Array.isArray(data) ? data : data?.items ?? [];
+  const total = Array.isArray(data) ? undefined : data?.total ;
+
+  useEffect(() => {
+    const t = new Date().toISOString().slice(0, 10);
+    setFrom(t);
+    setTo(t);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Navbar />
       <div className="p-4 space-y-4">
         <h1 className="text-xl font-semibold">Vehicles</h1>
 
@@ -46,8 +46,8 @@ function Dashboard() {
             <input
               type="date"
               className="input"
-              value={0}
-              onChange={(e) => {}}
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
             />
           </div>
           <div>
@@ -55,11 +55,16 @@ function Dashboard() {
             <input
               type="date"
               className="input"
-              value={0}
-              onChange={(e) => {}}
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
             />
           </div>
-          <button className="btn" onClick={() => {}}>
+          <button
+            className="btn"
+            onClick={() =>
+              downloadReport({ from, to }).catch((err) => alert(err.message))
+            }
+          >
             Download .xlsx
           </button>
         </div>
@@ -105,12 +110,15 @@ function Dashboard() {
                 </tbody>
               </table>
             </div>
-            {/* // pagination */}
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+            />
           </>
         )}
       </div>
     </div>
   );
 }
-
-export default Dashboard;
